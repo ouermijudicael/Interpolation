@@ -4,7 +4,7 @@ program main
   implicit none
  
   integer, parameter                    :: n = 11
-  integer, parameter                    :: m = 100
+  integer, parameter                    :: m = 1000
   real(kind=8)                          :: x1(n), v1(n)
   real(kind=8)                          :: xq1(m), vq1(m)
 
@@ -22,6 +22,7 @@ program main
    xq1(i) = xq1(i-1) + dx
    vq1(i) = 0.0
   enddo
+  xq1(m) = b
 
   call makima(x1, v1, n, xq1, vq1, m)
 
@@ -170,7 +171,6 @@ subroutine makima(x, v, n, xq, vq, m)
   !! Calculate modified Akima slopes
   call diff(x, n, h)
   call diff(v, n, delta)
-  print*, 'h=', h
 
   do i=1, n-1
     delta(i) = delta(i) / h(i)
@@ -178,17 +178,22 @@ subroutine makima(x, v, n, xq, vq, m)
 
   call makimaSlopes(delta, n-1, slopes)
 
-  print*, 'slopes = ', slopes
   !! Evaluate piece wise cubic Hermite interpolants
 
   do i=1, n-1
     do j=1, m
-      if( xq(j) .eq. x(i) ) then
+      if( xq(j) < x(1)) then
+        call hermite_cubic_value( x(1), v(1), slopes(1), x(2), v(2), slopes(2), &
+                                 1, xq(j), vq(j), d(j), s(j), t(j) )
+      else if( xq(j) .eq. x(i) ) then
         vq(j) = v(i)
       else if( xq(j) .eq. x(i+1) ) then
         vq(j) = v(i+1)
-      else if( x(i) < xq(j) .and. xq(j) < x(i+1) ) then
+      else if( x(i) < xq(j) .and. xq(j) .le. x(i+1) ) then
         call hermite_cubic_value( x(i), v(i), slopes(i), x(i+1), v(i+1), slopes(i+1), &
+                                 1, xq(j), vq(j), d(j), s(j), t(j) )
+      else if ( xq(j) > x(n) ) then
+        call hermite_cubic_value( x(n-1), v(n-1), slopes(n-1), x(n), v(n), slopes(n), &
                                  1, xq(j), vq(j), d(j), s(j), t(j) )
       endif
    enddo
